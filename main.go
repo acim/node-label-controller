@@ -33,11 +33,11 @@ func main() {
 
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
-	controller := NewController(kubeClient, kubeInformerFactory.Node().V1beta1().RuntimeClasses())
+	controller := NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes())
 
 	kubeInformerFactory.Start(stopCh)
 
-	if err = controller.Run(2, stopCh); err != nil {
+	if err = controller.Run(1, stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
 	}
 }
