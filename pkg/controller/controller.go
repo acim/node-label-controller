@@ -19,10 +19,7 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	controllerName = "node-label-controller"
-	label          = "kubermatic.io/uses-container-linux"
-)
+const controllerName = "node-label-controller"
 
 // Controller is Kubernetes controller implementation for node labeling.
 type Controller struct {
@@ -32,10 +29,12 @@ type Controller struct {
 	workqueue   workqueue.RateLimitingInterface
 	recorder    record.EventRecorder
 	nodeMatcher func(*api.Node) bool
+	labelKey    string
+	labelValue  string
 }
 
 // NewController creates new node label controller.
-func NewController(kubeClient kubernetes.Interface, nodesInformer informers.NodeInformer, nodeMatcher func(*api.Node) bool) *Controller {
+func NewController(kubeClient kubernetes.Interface, nodesInformer informers.NodeInformer, nodeMatcher func(*api.Node) bool, labelKey, labelValue string) *Controller {
 	klog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -48,6 +47,8 @@ func NewController(kubeClient kubernetes.Interface, nodesInformer informers.Node
 		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
 		recorder:    eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{Component: controllerName}),
 		nodeMatcher: nodeMatcher,
+		labelKey:    labelKey,
+		labelValue:  labelValue,
 	}
 
 	nodesInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -94,7 +95,7 @@ func (c *Controller) handleNode(o interface{}) {
 	}
 
 	// Label already exists
-	if _, ok := n.Labels[label]; ok {
+	if _, ok := n.Labels[c.labelKey]; ok {
 		return
 	}
 
@@ -165,15 +166,15 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) labelNode(node *api.Node) error {
-	node = node.DeepCopy()
+func (c *Controller) labelNode(n *api.Node) error {
+	n = n.DeepCopy()
 
-	node.Labels[label] = "true"
+	n.Labels[c.labelKey] = c.labelValue
 
-	_, err := c.kubeClient.CoreV1().Nodes().Update(node)
+	_, err := c.kubeClient.CoreV1().Nodes().Update(n)
 
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("failed labeling node: %w", err))
+		runtime.HandleError(fmt.Errorf("failed labeling node: %v", err))
 	}
 
 	return nil

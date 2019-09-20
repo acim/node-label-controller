@@ -15,10 +15,12 @@ import (
 func main() {
 	klog.InitFlags(nil)
 
-	var masterURL, kubeConfig, os string
+	var masterURL, kubeConfig, os, labelKey, labelValue string
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&os, "os", "Container Linux", "Operating system name's prefix, i.e. Ubuntu, Fedora...")
+	flag.StringVar(&labelKey, "label-key", "kubermatic.io/uses-container-linux", "Label key to label a matching node")
+	flag.StringVar(&labelValue, "label-value", "true", "Label value to label a matching node")
 	flag.Parse()
 
 	stopCh := signals.SetupSignalHandler()
@@ -35,7 +37,7 @@ func main() {
 
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
-	c := controller.NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes(), controller.OSPrefix(os))
+	c := controller.NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes(), controller.OSPrefix(os), labelKey, labelValue)
 
 	kubeInformerFactory.Start(stopCh)
 
