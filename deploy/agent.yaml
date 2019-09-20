@@ -1,0 +1,26 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: acim
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: node-label-controller
+  namespace: acim
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: node-label-controller
+    spec:
+      containers:
+      - name: node-label-controller
+        image: acim/node-label-controller
+        imagePullPolicy: Always
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule

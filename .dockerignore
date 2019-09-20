@@ -1,4 +1,5 @@
 .git
 .gitignore
+deploy
 node-label-controller
 README.md
