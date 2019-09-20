@@ -4,6 +4,7 @@ import (
 	"flag"
 	"time"
 
+	"github.com/acim/node-label-controller/pkg/controller"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -14,30 +15,31 @@ import (
 func main() {
 	klog.InitFlags(nil)
 
-	var masterURL, kubeConfig string
+	var masterURL, kubeConfig, os string
 	flag.StringVar(&kubeConfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&os, "os", "Container Linux", "Operating system name's prefix, i.e. Ubuntu, Fedora...")
 	flag.Parse()
 
 	stopCh := signals.SetupSignalHandler()
 
-	config, err := clientcmd.BuildConfigFromFlags("", "")
+	config, err := clientcmd.BuildConfigFromFlags(masterURL, kubeConfig)
 	if err != nil {
-		klog.Fatalf("Error building kubeconfig: %s", err.Error())
+		klog.Fatalf("Error building kubeconfig: %v", err)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		klog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+		klog.Fatalf("Error building kubernetes clientset: %v", err)
 	}
 
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
-	controller := NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes())
+	c := controller.NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes(), controller.OSPrefix(os))
 
 	kubeInformerFactory.Start(stopCh)
 
-	if err = controller.Run(1, stopCh); err != nil {
-		klog.Fatalf("Error running controller: %s", err.Error())
+	if err = c.Run(1, stopCh); err != nil {
+		klog.Fatalf("Error running controller: %v", err)
 	}
 }

@@ -1,8 +1,7 @@
-package main
+package controller
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	api "k8s.io/api/core/v1"
@@ -32,10 +31,11 @@ type Controller struct {
 	nodesSynced cache.InformerSynced
 	workqueue   workqueue.RateLimitingInterface
 	recorder    record.EventRecorder
+	nodeMatcher func(*api.Node) bool
 }
 
 // NewController creates new node label controller.
-func NewController(kubeClient kubernetes.Interface, nodesInformer informers.NodeInformer) *Controller {
+func NewController(kubeClient kubernetes.Interface, nodesInformer informers.NodeInformer, nodeMatcher func(*api.Node) bool) *Controller {
 	klog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -47,6 +47,7 @@ func NewController(kubeClient kubernetes.Interface, nodesInformer informers.Node
 		nodesSynced: nodesInformer.Informer().HasSynced,
 		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
 		recorder:    eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{Component: controllerName}),
+		nodeMatcher: nodeMatcher,
 	}
 
 	nodesInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -60,7 +61,7 @@ func NewController(kubeClient kubernetes.Interface, nodesInformer informers.Node
 }
 
 // Run listens for nodes changes and acts upon.
-func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
+func (c *Controller) Run(concurrency int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
@@ -71,9 +72,9 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 		return fmt.Errorf("failed waiting for caches to sync")
 	}
 
-	klog.Infof("Starting %d workers", threadiness)
+	klog.Infof("Starting %d workers", concurrency)
 
-	for i := 0; i < threadiness; i++ {
+	for i := 0; i < concurrency; i++ {
 		go wait.Until(c.run, time.Second, stopCh)
 	}
 
@@ -97,7 +98,7 @@ func (c *Controller) handleNode(o interface{}) {
 		return
 	}
 
-	if strings.HasPrefix(n.Status.NodeInfo.OSImage, "Container Linux") {
+	if c.nodeMatcher(n) {
 		key, err := cache.MetaNamespaceKeyFunc(o)
 		if err == nil {
 			c.workqueue.Add(key)
