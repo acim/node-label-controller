@@ -1,5 +1,6 @@
 .git
 .gitignore
 deploy
+Makefile
 node-label-controller
 README.md

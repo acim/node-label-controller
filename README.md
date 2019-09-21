@@ -19,3 +19,17 @@ Controller will be installed in *acim* namespace.
 ```sh
 kubectl delete -f deploy
 ```
+
+## Development
+
+### Run tests
+
+```sh
+make test
+```
+
+### Lint and vet
+
+```sh
+make lint
+```
