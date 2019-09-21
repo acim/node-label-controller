@@ -34,7 +34,7 @@ type Controller struct {
 }
 
 // NewController creates new node label controller.
-func NewController(kubeClient kubernetes.Interface, nodesInformer informers.NodeInformer, nodeMatcher func(*api.Node) bool, labelKey, labelValue string) *Controller {
+func NewController(kubeClient kubernetes.Interface, nodesInformer informers.NodeInformer, nodeLabel *NodeLabel) *Controller {
 	klog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -46,9 +46,9 @@ func NewController(kubeClient kubernetes.Interface, nodesInformer informers.Node
 		nodesSynced: nodesInformer.Informer().HasSynced,
 		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
 		recorder:    eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{Component: controllerName}),
-		nodeMatcher: nodeMatcher,
-		labelKey:    labelKey,
-		labelValue:  labelValue,
+		nodeMatcher: nodeLabel.matcher,
+		labelKey:    nodeLabel.key,
+		labelValue:  nodeLabel.value,
 	}
 
 	nodesInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

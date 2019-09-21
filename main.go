@@ -37,7 +37,7 @@ func main() {
 
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
-	c := controller.NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes(), controller.OSPrefix(os), labelKey, labelValue)
+	c := controller.NewController(kubeClient, kubeInformerFactory.Core().V1().Nodes(), controller.NewNodeLabel(controller.OSPrefix(os), labelKey, labelValue))
 
 	kubeInformerFactory.Start(stopCh)
 
