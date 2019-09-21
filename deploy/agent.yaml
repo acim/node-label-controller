@@ -20,7 +20,3 @@ spec:
       - name: node-label-controller
         image: acim/node-label-controller
         imagePullPolicy: Always
-      tolerations:
-      - key: node-role.kubernetes.io/master
-        operator: Exists
-        effect: NoSchedule
