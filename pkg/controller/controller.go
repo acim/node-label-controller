@@ -28,9 +28,7 @@ type Controller struct {
 	nodesSynced cache.InformerSynced
 	workqueue   workqueue.RateLimitingInterface
 	recorder    record.EventRecorder
-	nodeMatcher func(*api.Node) bool
-	labelKey    string
-	labelValue  string
+	nodeLabel   *NodeLabel
 }
 
 // NewController creates new node label controller.
@@ -46,9 +44,7 @@ func NewController(kubeClient kubernetes.Interface, nodesInformer informers.Node
 		nodesSynced: nodesInformer.Informer().HasSynced,
 		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerName),
 		recorder:    eventBroadcaster.NewRecorder(scheme.Scheme, api.EventSource{Component: controllerName}),
-		nodeMatcher: nodeLabel.matcher,
-		labelKey:    nodeLabel.key,
-		labelValue:  nodeLabel.value,
+		nodeLabel:   nodeLabel,
 	}
 
 	nodesInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -95,11 +91,11 @@ func (c *Controller) handleNode(o interface{}) {
 	}
 
 	// Label already exists
-	if _, ok := n.Labels[c.labelKey]; ok {
+	if _, ok := n.Labels[c.nodeLabel.key]; ok {
 		return
 	}
 
-	if c.nodeMatcher(n) {
+	if c.nodeLabel.matcher(n) {
 		key, err := cache.MetaNamespaceKeyFunc(o)
 		if err == nil {
 			c.workqueue.Add(key)
@@ -169,12 +165,11 @@ func (c *Controller) syncHandler(key string) error {
 func (c *Controller) labelNode(n *api.Node) error {
 	n = n.DeepCopy()
 
-	n.Labels[c.labelKey] = c.labelValue
+	n.Labels[c.nodeLabel.key] = c.nodeLabel.value
 
 	_, err := c.kubeClient.CoreV1().Nodes().Update(n)
-
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("failed labeling node: %v", err))
+		return fmt.Errorf("failed labeling node: %w", err)
 	}
 
 	return nil
