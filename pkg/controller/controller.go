@@ -146,7 +146,7 @@ func (c *Controller) syncHandler(key string) error {
 	node, err := c.nodesLister.Get(key)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			runtime.HandleError(fmt.Errorf("node %s not found in workqueue", key))
+			runtime.HandleError(fmt.Errorf("node %s not found in nodes lister", key))
 			return nil
 		}
 
