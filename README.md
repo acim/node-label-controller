@@ -12,7 +12,7 @@ By modifying main.go you can set any other criteria based on the Node object and
 kubectl apply -f deploy
 ```
 
-Controller will be installed in *acim* namespace.
+Controller will be installed in **node-label** namespace.
 
 ## Uninstall
 

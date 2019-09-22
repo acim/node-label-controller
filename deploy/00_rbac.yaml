@@ -32,5 +32,5 @@ roleRef:
   name: node-label-controller
 subjects:
   - kind: ServiceAccount
-    namespace: acim
+    namespace: node-label
     name: default
